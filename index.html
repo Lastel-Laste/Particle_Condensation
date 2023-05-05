@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>파티클 프로세싱</title>
+    <style>
+      body {
+        background-color: black;
+        margin: 0;
+      }
+      canvas {
+        display: block;
+        border: 1px solid black;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <script>
+      const canvas = document.getElementById("canvas");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      const ctx = canvas.getContext("2d");
+
+      // 파티클 배열
+      const particles = [];
+
+      // 파티클 생성 함수
+      function createParticle(x, y) {
+        const particle = {
+          x: x,
+          y: y,
+          radius: Math.random() * 5 + 1, // 반지름 1 ~ 6
+          color: "white",
+          velocity: {
+            x: (Math.random() - 0.5) * 5, // -2.5 ~ 2.5
+            y: (Math.random() - 0.5) * 5  // -2.5 ~ 2.5
+          }
+        };
+        particles.push(particle);
+      }
+
+      // 파티클 생성
+      for (let i = 0; i < 300; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        createParticle(x, y);
+      }
+
+      // 파티클 간의 충돌 검사
+      function checkCollision(particle1, particle2) {
+        const dx = particle1.x - particle2.x;
+        const dy = particle1.y - particle2.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < particle1.radius + particle2.radius) {
+          // 충돌 각도
+          const angle = Math.atan2(dy, dx);
+
+          // 첫 번째 파티클의 충돌 후 속도
+          const velocity1 = {
+            x: particle1.velocity.x * Math.cos(angle) + particle1.velocity.y * Math.sin(angle),
+            y: particle1.velocity.y * Math.cos(angle) - particle1.velocity.x * Math.sin(angle)
+          };
+
+          // 두 번째 파티클의 충돌 후 속도
+          const velocity2 = {
+            x: particle2.velocity.x * Math.cos(angle) + particle2.velocity.y * Math.sin(angle),
+            y: particle2.velocity.y * Math.cos(angle) - particle2.velocity.x * Math.sin(angle)
+          };
+
+          // 충돌 후 속도를 이용한 파티클 이동
+          particle1.velocity.x = velocity2.x * Math.cos(angle) - velocity1.y * Math.sin(angle);
+          particle1.velocity.y = velocity2.y * Math.cos(angle) + velocity1.x * Math.sin(angle);
+          particle2.velocity.x = velocity1.x * Math.cos(angle) - velocity2.y * Math.sin(angle);
+          particle2.velocity.y = velocity1.y * Math.cos(angle) + velocity2.x * Math.sin(angle);
+        }
+
+        function applyGravity(particle1, particle2) {
+            const G = 6.674 * Math.pow(10, -11); // 만유인력 상수
+            const distance = Math.sqrt(Math.pow(particle1.x - particle2.x, 2) + Math.pow(particle1.y - particle2.y, 2)); // 파티클 간의 거리
+            const force = G / Math.pow(distance, 2); // 만유인력
+            const angle = Math.atan2(particle1.y - particle2.y, particle1.x - particle2.x); // 파티클 간의 각도
+          
+            // 파티클에 적용되는 만유인력의 벡터
+            const forceVector = {
+              x: force * Math.cos(angle),
+              y: force * Math.sin(angle)
+            };
+          
+            // 파티클에 만유인력 적용
+            particle1.velocity.x -= forceVector.x;
+            particle1.velocity.y -= forceVector.y;
+            particle2.velocity.x += forceVector.x;
+            particle2.velocity.y += forceVector.y;
+        }          
+      }
+
+      function update() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 파티클 간의 충돌 검사
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            checkCollision(particles[i], particles[j]);
+          }
+        }
+
+        // 파티클 이동 및 그리기
+        for (let i = 0; i < particles.length; i++) {
+          const particle = particles[i];
+          particle.x += particle.velocity.x;
+          particle.y += particle.velocity.y;
+          if (particle.x < 0 || particle.x > canvas.width) {
+            particle.velocity.x = -particle.velocity.x;
+          }
+          if (particle.y < 0 || particle.y > canvas.height) {
+            particle.velocity.y = -particle.velocity.y;
+          }
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2, false);
+          ctx.fillStyle = particle.color;
+          ctx.fill();
+        }
+
+        requestAnimationFrame(update);
+      }
+
+      update();
+    </script>
+  </body>
+</html>
