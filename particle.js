@@ -5,7 +5,7 @@ class Particle {
   constructor(canvas) {
     this.canvas = canvas;
     this.radius = Math.random() * 5 + 1; // 반지름 1 ~ 6
-    this.mass = this.radius * 1000; // 반지름 크기의 10000배
+    this.mass = this.radius * 1000; // 반지름 크기의 1000배
     this.x = Math.random() * this.canvas.width;
     this.y = Math.random() * this.canvas.height;
     this.velocity = {
@@ -15,7 +15,7 @@ class Particle {
     this.color = "white";
   }
 
-  // 파티클의 위치를 업데이트합니다.
+  // 파티클 위치 업데이트
   update() {
     this.x += this.velocity.x;
     this.y += this.velocity.y;
@@ -35,7 +35,7 @@ class Particle {
     }
   }
 
-  // 파티클을 캔버스에 그립니다.
+  // 파티클을 캔버스에 그린다.
   draw(ctx) {
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
