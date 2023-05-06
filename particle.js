@@ -42,7 +42,7 @@ class Particle {
             const particle = particles[i];
             if (particle === this) continue;
             const distance = this.distanceTo(particle);
-            if (distance < 50) {
+            if (distance < 1) {
                 const { fx: newFx, fy: newFy } = this.calculateVerticalForce(particle);
                 fx += newFx;
                 fy += newFy;
