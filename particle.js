@@ -134,10 +134,8 @@ function applyGravitationOrFriction(particle1, particle2) {
     let fx = Gravity * dx / distance;
     let fy = Gravity * dy / distance;
 
-    if (distance !== 0.1) { // 두 파티클이 맞닿은 경우 마찰력
-        fx = Gravity * dx / distance;
-        fy = Gravity * dy / distance;
-
+    if (distance === 0.1) { // 두 파티클이 맞닿은 경우 마찰력
+      
         // 마찰력 계산
         const Fn = Gravity;
         const Friction = μ * Fn;
