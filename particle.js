@@ -193,7 +193,7 @@ function applyMouseGravity(particle) {
   if (!mouse) {
     return;
   }
-  const G = 6.674 * Math.pow(10, -3.5); // 강한 인력 계수
+  const G = 6.674 * Math.pow(10, -2); // 강한 인력 계수
   const dx = mouse.x - particle.x;
   const dy = mouse.y - particle.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
