@@ -5,7 +5,7 @@ class Particle {
   constructor(canvas) {
     this.canvas = canvas;
     this.radius = Math.random() * 5 + 1; // 반지름 1 ~ 6
-    this.mass = this.radius * 1000; // 반지름 크기의 1000배
+    this.mass = this.radius * 10000; // 반지름 크기의 10000배
     this.x = Math.random() * this.canvas.width;
     this.y = Math.random() * this.canvas.height;
     this.velocity = {
