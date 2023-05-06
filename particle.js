@@ -177,11 +177,44 @@ function applyGravitation(particle1, particle2) {
 }  
 
 
+// 마우스 위치를 저장할 변수
+let mouse = null;
+
+// 마우스 이벤트 리스너 등록
+canvas.addEventListener('mousemove', function(event) {
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = event.clientX - rect.left;
+  const mouseY = event.clientY - rect.top;
+  mouse = { x: mouseX, y: mouseY };
+});
+
+// 마우스 위치에 따라 파티클 속도에 강한 인력 적용
+function applyMouseGravity(particle) {
+  if (!mouse) {
+    return;
+  }
+  const G = 6.674 * Math.pow(10, -3.5); // 강한 인력 계수
+  const dx = mouse.x - particle.x;
+  const dy = mouse.y - particle.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  if (distance < particle.radius) {
+    return;
+  }
+  const force = -1 * G * particle.mass / Math.pow(distance, 2);
+  const angle = Math.atan2(dy, dx);
+  const fx = force * Math.cos(angle);
+  const fy = force * Math.sin(angle);
+  particle.velocity.x += fx;
+  particle.velocity.y += fy;
+}
+
+
 function update(ctx, canvas) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   for (let i = 0; i < particles.length; i++) {
     particles[i].draw(ctx);
     particles[i].updateWithVerticalForce(particles);
+    applyMouseGravity(particles[i]);
     for (let j = i + 1; j < particles.length; j++) {
         checkCollision(particles[i], particles[j]);
         applyGravitation(particles[i], particles[j])
