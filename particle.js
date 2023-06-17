@@ -72,7 +72,7 @@ function handleCollision(particleA, particleB) {
 	  particleB.position.x -= overlap * direction.x * 0.5;
 	  particleB.position.y -= overlap * direction.y * 0.5;
 
-	  const restitution = 0.6;
+	  const restitution = 0.9;
 	  const velocityDiff_x =
 		particleA.velocity.x - particleB.velocity.x;
 	  const velocityDiff_y =
