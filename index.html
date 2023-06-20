@@ -7,16 +7,23 @@
         background-color: rgba(67, 73, 255, 0.583);
         margin: 0;
       }
-      canvas {
-        display: block;
-        border: 1px solid black;
-      }
+      #fps-counter {
+        position: absolute;
+        left: 10px;
+        bottom: 10px;
+        color: white;
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+        font-weight: bold;
+        pointer-events: none;
+    }
     </style>
   </head>
   <body>
+    <div id="fps-counter"></div>
     <canvas id="canvas"></canvas>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
-    <script src="particle.js"></script>
+    <script src="FPSCounter.js"></script>
+    <script src="particle2 copy.js"></script>
     <script>
 
         // 캔버스 초기화
@@ -24,16 +31,13 @@
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         const ctx = canvas.getContext("2d");
-
-        // 파티클 시스템 초기화
         init(canvas);
-        update(ctx, canvas);
+        update(ctx, canvas)
 
         // 캔버스 크기 조정 이벤트 리스너
         window.addEventListener("resize", () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        init(canvas);
         });
 
     </script>
