@@ -1,7 +1,7 @@
 // Grid
 
 // 그리드(셀) 관련 변수
-const gridSize = 2; // 그리드 셀의 크기
+const gridSize = 5; // 그리드 셀의 크기
 let gridWidth; // 그리드 너비
 let gridHeight; // 그리드 높이
 let grid; // 그리드 배열
