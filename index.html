@@ -29,8 +29,8 @@
 
         // 캔버스 초기화
         const canvas = document.getElementById("canvas");
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        canvas.width = window.innerWidth -4;
+        canvas.height = window.innerHeight -4;
         const ctx = canvas.getContext("2d");
         init(canvas);
         initGrid(canvas);
