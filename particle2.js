@@ -13,7 +13,7 @@ class Particle {
 		x: 0,
 		y: 0
 	  };
-	  this.radius = 1;
+	  this.radius = 2.5;
 	  this.mass = this.radius * this.radius * 1e8;
 	  this.friction = 1;  // 0: 완전 미끌 1: 완전 뻣뻣
 	}
