@@ -120,26 +120,39 @@ function update(ctx, canvas) {
 }
 
 // 충돌 처리 함수
-function handleCollision(particleA, particleB, dx, dy, distance, overlap) {
-	const direction = { x: dx / distance, y: dy / distance };
-	
-	particleA.position.x += overlap * direction.x * 0.5;
-	particleA.position.y += overlap * direction.y * 0.5;
-	particleB.position.x -= overlap * direction.x * 0.5;
-	particleB.position.y -= overlap * direction.y * 0.5;
-	
-	const restitution = 0.8;
-	const friction = Math.sqrt(particleA.friction * particleB.friction);
-	const velocityDiff_x = particleA.velocity.x - particleB.velocity.x;
-	const velocityDiff_y = particleA.velocity.y - particleB.velocity.y;
-	const impulse_x = (1 + restitution) * velocityDiff_x / (particleA.mass + particleB.mass);
-  	const impulse_y = (1 + restitution) * velocityDiff_y / (particleA.mass + particleB.mass);
+function handleCollision(A, B, dx, dy, d, overlap) {
+    const normal = = { x: dx / d, y: dy / d };
+    const tangent = { x: -1*normal.y, y: normal.x};
+    
+    // 충돌 벡터의 정사영 계산
+    const vA1 = A.velocity.x * normal.x + A.velocity.y * normal.y;
+    const vB1 = B.velocity.x * normal.x + B.velocity.y * normal.y;
 
-	// Apply the impulse and also consider the friction
-	particleA.velocity.x -= impulse_x * particleB.mass * friction;
-	particleA.velocity.y -= impulse_y * particleB.mass * friction;
-	particleB.velocity.x += impulse_x * particleA.mass * friction;
-	particleB.velocity.y += impulse_y * particleA.mass * friction;
+    // 충돌 벡터의 직교 영 계산
+    const vA2 = A.velocity.x * tangent.x + A.velocity.y * tangent.y;
+    const vB2 = B.velocity.x * tangent.x + B.velocity.y * tangent.y;
+
+    // 충돌 후의 정사영 속도 계산
+    const restitution = 0.9;
+    const vA1Final = (vA1 * (A.mass - B.mass) + (1 + restitution) * B.mass * vB1) / (A.mass + B.mass);
+    const vB1Final = (vB1 * (B.mass - A.mass) + (1 + restitution) * A.mass * vA1) / (A.mass + B.mass);
+
+    // 충돌 후의 속도 벡터 계산
+    const vA1FinalVec = vA1Final * normal;
+    const vA2FinalVec = vA2 * tangent;
+    const vB1FinalVec = vB1Final * normal;
+    const vB2FinalVec = vB2 * tangent;
+
+    // 충돌 후의 속도 계산
+    A.velocity = vA1FinalVec + vA2FinalVec;
+    B.velocity = vB1FinalVec + vB2FinalVec;
+
+    // 충돌 후의 위치 조정
+    const displacementScale = overlap / (A.mass + B.mass);
+    const displacement = displacementScale * normal;
+
+    A.position += displacement * A.mass;
+    B.position -= displacement * B.mass;
 }
 
 // 만유인력 적용 함수
