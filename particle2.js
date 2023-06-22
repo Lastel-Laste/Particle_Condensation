@@ -121,7 +121,7 @@ function update(ctx, canvas) {
 
 // 충돌 처리 함수
 function handleCollision(A, B, dx, dy, d, overlap) {
-    const normal = = { x: dx / d, y: dy / d };
+    const normal = { x: dx / d, y: dy / d };
     const tangent = { x: -1*normal.y, y: normal.x};
     
     // 충돌 벡터의 정사영 계산
