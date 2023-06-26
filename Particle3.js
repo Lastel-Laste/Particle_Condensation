@@ -169,5 +169,3 @@ function applyGravitation(particle) {
 	particle.acceleration.x = acceleration.x;
 	particle.acceleration.y = acceleration.y;
 }
-
-
