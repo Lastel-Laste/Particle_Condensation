@@ -16,6 +16,7 @@ class Particle {
 	  this.radius = 2.5;
 	  this.mass = this.radius * this.radius * 1e7;
 	  this.friction = 0.95;  // 0: 완전 미끌 1: 완전 뻣뻣
+	  this.isColliding = false;
 	}
 
 	update() {
@@ -105,7 +106,7 @@ function update(ctx, canvas) {
 	  const particle = particles[i];
 
 	  particle.update();
-	  ctx.fillStyle = "#ffffff"
+	  ctx.fillStyle = particle.isColliding ? "#ff0000" : "#ffffff";
 	  ctx.beginPath();
 	  ctx.arc(
 		particle.position.x,
@@ -116,6 +117,8 @@ function update(ctx, canvas) {
 	  );
 	  ctx.closePath();
 	  ctx.fill();
+	  
+  	  particle.isColliding = false;
 	}
         then = now - (delta % interval);}
 }
@@ -143,6 +146,9 @@ function handleCollision(particleA, particleB, dx, dy, distance, overlap) {
 
     particleA.velocity = colVelocityA;
     particleB.velocity = colVelocityB;
+
+    particleA.isColliding = true;
+    particleB.isColliding = true;
 }
 
 
