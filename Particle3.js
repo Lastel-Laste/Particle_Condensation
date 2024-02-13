@@ -158,7 +158,7 @@ function applyGravitation(particle) {
 		const dy = otherParticle.position.y - particle.position.y;
 		const distance = Math.sqrt(dx * dx + dy * dy);
 
-		const gravity = (G * particle.mass * otherParticle.mass) / (distance * distance);
+		const gravity = 10 * (G * particle.mass * otherParticle.mass) / (distance * distance);
 		const fx = gravity * dx / distance;
 		const fy = gravity * dy / distance;
 
