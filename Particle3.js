@@ -104,21 +104,16 @@ function update(ctx, canvas) {
 	
 	for (let i = particles.length; i--;){
 	  const particle = particles[i];
-
+	
 	  particle.update();
-	  ctx.fillStyle = particle.isColliding ? "#ff0000" : "#ffffff";
+	  ctx.fillStyle = particle.isColliding ? "#ff0000" : "#ffffff"; // 충돌 시 빨간색, 아니면 흰색
 	  ctx.beginPath();
-	  ctx.arc(
-		particle.position.x,
-		particle.position.y,
-		particle.radius,
-		0,
-		Math.PI * 2
-	  );
+	  ctx.arc(particle.position.x, particle.position.y, particle.radius, 0, Math.PI * 2);
 	  ctx.closePath();
 	  ctx.fill();
-	  
-  	  particle.isColliding = false;
+	
+	  // 다음 프레임을 위해 충돌 상태 초기화
+	  particle.isColliding = false;
 	}
         then = now - (delta % interval);}
 }
