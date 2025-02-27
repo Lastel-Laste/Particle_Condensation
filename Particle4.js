@@ -278,7 +278,7 @@ function update(ctx, canvas) {
 	
 	// 캔버스 클리어 및 그리드 라인 그리기
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	drawGridLines(ctx, canvas);
+	// drawGridLines(ctx, canvas);
 	
 		// 모든 입자 그리기 (회전 적용)
 	for (let i = 0; i < particles.length; i++) {
