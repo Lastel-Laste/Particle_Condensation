@@ -9,7 +9,7 @@ class Particle {
 			y: Math.random() * 1 - 0.5 
 		};
 		this.acceleration = { x: 0, y: 0 };
-		this.radius = 0.5;
+		this.radius = 1.5;
 		this.mass = this.radius * this.radius * 1e7;
 		this.invMass = 1 / this.mass;
 		// 회전 관련 변수: 각도, 각속도, 관성 (원반의 경우 I = 0.5 * m * r^2)
@@ -49,7 +49,7 @@ class Contact {
 
 // 전역 변수들 및 상수들
 let particles = [];
-const particle_num = 10000;
+const particle_num = 4000;
 const restitution = 0.6;       // 충돌 반발 계수
 const friction = 0.1;          // 접촉 마찰 계수
 const solverIterations = 10;   // Sequential Impulse Solver 반복 횟수
