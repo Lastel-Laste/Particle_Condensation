@@ -74,7 +74,7 @@ function init(canvas) {
 // 외력(중력) 계산 – 각 입자에 대해 모든 다른 입자와의 만유인력을 계산 (스케일 조정 가능)
 function computeGravitationalAcceleration(particle) {
 	// 실제 상수 대신 시뮬레이션에 맞게 조정된 상수를 사용할 수 있음
-	const G = 6.125e-9; //6.125e-11
+	const G = 6.125e-10; //6.125e-11
 	let ax = 0, ay = 0;
 	for (let i = 0; i < particles.length; i++) {
 		const other = particles[i];
