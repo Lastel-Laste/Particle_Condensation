@@ -1,6 +1,6 @@
 // Particle4.js
 
-// 2D 원형 입자 클래스 (회전, 질량, 관성 포함)
+// 입자 클래스
 class Particle {
 	constructor(x, y) {
 		this.position = { x: x, y: y };
@@ -53,11 +53,6 @@ const particle_num = 1000;
 const restitution = 0.6;       // 충돌 반발 계수
 const friction = 0.1;          // 접촉 마찰 계수
 const solverIterations = 10;   // Sequential Impulse Solver 반복 횟수
-
-// ★ 여기서 timeScale을 도입합니다. ★
-// 이 값은 시뮬레이션 시간(물리 시간)을 실제 시간보다 빠르게 진행시켜,
-// 입자들의 초기 속도와 운동이 눈에 띄게 보이도록 합니다.
-// (물리적 관계는 그대로 유지되므로, 정확도는 양보하지 않습니다.)
 const timeScale = 30;
 
 // 시간 관련 변수
@@ -209,7 +204,7 @@ function update(ctx, canvas) {
 	let now = Date.now();
 	// 실제 프레임 시간 (초)
 	let frameTime = (now - then) / 1000;
-	// ★ 시뮬레이션 시간 스케일 적용 ★
+	// 시뮬레이션 시간 스케일 적용
 	frameTime *= timeScale;
 	if (frameTime > 0.25) frameTime = 0.25; // 지나치게 큰 dt 방지
 	then = now;
@@ -220,7 +215,7 @@ function update(ctx, canvas) {
 		addParticleToGrid(particles[i], calculateGridIndex(particles[i].position));
 	}
 	
-	// 모든 입자에 대해 외력(중력) 적용 및 선형 속도 업데이트
+	// 중력 적용 및 선형 속도 업데이트
 	for (let i = 0; i < particles.length; i++) {
 		let p = particles[i];
 		let grav = computeGravitationalAcceleration(p);
@@ -234,7 +229,7 @@ function update(ctx, canvas) {
 	// 충돌 접점 검출
 	let contacts = detectContacts();
 	
-	// Sequential Impulse Solver 반복 적용
+	// Sequential Impulse Solver
 	for (let iter = 0; iter < solverIterations; iter++) {
 		for (let i = 0; i < contacts.length; i++) {
 			resolveContact(contacts[i]);
@@ -246,12 +241,12 @@ function update(ctx, canvas) {
 		positionalCorrection(contacts[i]);
 	}
 	
-	// 모든 입자에 대해 최종 위치와 회전 통합
+	// 최종 위치와 회전 통합
 	for (let i = 0; i < particles.length; i++) {
 		particles[i].integrate(frameTime);
 	}
 	
-	// 벽과의 간단한 충돌 처리 (반사)
+	// 벽 충돌 처리 
 	for (let i = 0; i < particles.length; i++) {
 		let p = particles[i];
 		// 왼쪽 벽
@@ -278,9 +273,9 @@ function update(ctx, canvas) {
 	
 	// 캔버스 클리어 및 그리드 라인 그리기
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	// drawGridLines(ctx, canvas);
+	drawGridLines(ctx, canvas);
 	
-		// 모든 입자 그리기 (회전 적용)
+		// 모든 입자 그리기
 	for (let i = 0; i < particles.length; i++) {
 		let p = particles[i];
 		ctx.save();
