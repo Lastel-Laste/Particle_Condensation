@@ -1,4 +1,4 @@
-// Particle4.js with No Air Resistance
+// Particle5.js with No Air Resistance
 
 // 입자 클래스
 class Particle {
