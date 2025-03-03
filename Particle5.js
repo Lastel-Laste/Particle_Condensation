@@ -1,4 +1,4 @@
-// Particle5.js with Sleep Mechanism
+// Particle4.js with No Air Resistance
 
 // 입자 클래스
 class Particle {
@@ -60,8 +60,9 @@ class Contact {
 // 전역 변수들 및 상수들
 let particles = [];
 const particle_num = 1000;
-const restitution = 0.6;       // 충돌 반발 계수
-const friction = 0.1;          // 접촉 마찰 계수
+// 충돌 시 에너지 손실을 없애기 위해 restitution과 friction을 튜닝
+const restitution = 1.0;       // 충돌 반발 계수 (완전 탄성 충돌)
+const friction = 0.0;          // 접촉 마찰 계수 (마찰 없음)
 const solverIterations = 10;   // Sequential Impulse Solver 반복 횟수
 const timeScale = 30;
 
@@ -87,7 +88,7 @@ function init(canvas) {
 	}
 }
 
-// 외력(중력) 계산 – 각 입자에 대해 모든 다른 입자와의 만유인력을 계산 (스케일 조정 가능)
+// 외력(만유인력) 계산 – 각 입자에 대해 모든 다른 입자와의 만유인력을 계산 (스케일 조정 가능)
 function computeGravitationalAcceleration(particle) {
 	const G = 6.125e-11;
 	let ax = 0, ay = 0;
@@ -174,7 +175,7 @@ function resolveContact(contact) {
 	a.angularVelocity -= a.invInertia * (rA.x * impulse.y - rA.y * impulse.x);
 	b.angularVelocity += b.invInertia * (rB.x * impulse.y - rB.y * impulse.x);
 	
-	// 접선(마찰) 계산
+	// 접선(마찰) 계산 (마찰이 0이므로 사실상 효과 없음)
 	let tangent = { x: -normal.y, y: normal.x };
 	let relVelTangent = rv.x * tangent.x + rv.y * tangent.y;
 	let jt = -relVelTangent / invMassSum;
@@ -232,7 +233,7 @@ function update(ctx, canvas) {
 	// 중력 적용 및 선형 속도 업데이트
 	for (let i = 0; i < particles.length; i++) {
 		let p = particles[i];
-		// 슬립 상태인 경우, 외력이나 속도가 일정 임계치를 넘으면 깨어나도록 검사
+		// 슬립 상태인 경우, 외력이나 속도가 임계치를 넘으면 깨어나도록 검사
 		if (p.isSleeping) {
 			let grav = computeGravitationalAcceleration(p);
 			let aMag = Math.hypot(grav.x, grav.y);
