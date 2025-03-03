@@ -1,4 +1,4 @@
-// Particle5.js with No Air Resistance
+// Particle5.js
 
 // 입자 클래스
 class Particle {
@@ -20,20 +20,10 @@ class Particle {
 		this.isColliding = false;
 		// 공간 분할(그리드) 용 인덱스
 		this.gridIndex = -1;
-		// 슬립 메커니즘 관련 변수
-		this.sleepTimer = 0;
-		this.isSleeping = false;
 	}
 
 	// dt(초) 동안 위치와 회전 통합
 	integrate(dt) {
-		// 슬립 상태라면 업데이트하지 않음
-		if (this.isSleeping) {
-			// 작은 오차 누적 방지를 위해 가속도 초기화
-			this.acceleration.x = 0;
-			this.acceleration.y = 0;
-			return;
-		}
 		// 선형 운동
 		this.velocity.x += this.acceleration.x * dt;
 		this.velocity.y += this.acceleration.y * dt;
@@ -60,17 +50,13 @@ class Contact {
 // 전역 변수들 및 상수들
 let particles = [];
 const particle_num = 1000;
-// 충돌 시 에너지 손실을 없애기 위해 restitution과 friction을 튜닝
-const restitution = 1.0;       // 충돌 반발 계수 (완전 탄성 충돌)
-const friction = 0.0;          // 접촉 마찰 계수 (마찰 없음)
-const solverIterations = 10;   // Sequential Impulse Solver 반복 횟수
+const restitution = 0.6;       // 충돌 반발 계수
+const friction = 0.005;          // 낮은 마찰 계수로 미세 감쇠 효과 유지
+const solverIterations = 10;     // Solver 반복 횟수는 그대로 유지
 const timeScale = 30;
-
-// 슬립 메커니즘 관련 상수들
-const sleepVelocityThreshold = 0.05; // 임계 속도 (이하이면 슬립 고려)
-const sleepTimeLimit = 0.5;          // 슬립 판정까지 필요한 시간 (초)
-const wakeVelocityThreshold = 0.1;   // 깨어나기 위한 속도 임계값
-const wakeAccelerationThreshold = 0.1; // 깨어나기 위한 가속도 임계값
+const baumgartePercent = 0.05;   // Baumgarte 위치 보정 비율을 낮춤
+const linearDamping = 0.999;     // 선형 속도 미세 감쇠
+const angularDamping = 0.999;    // 회전 속도 미세 감쇠
 
 // 시간 관련 변수
 let fps = 480;
@@ -88,8 +74,9 @@ function init(canvas) {
 	}
 }
 
-// 외력(만유인력) 계산 – 각 입자에 대해 모든 다른 입자와의 만유인력을 계산 (스케일 조정 가능)
+// 외력(중력) 계산 – 각 입자에 대해 모든 다른 입자와의 만유인력을 계산 (스케일 조정 가능)
 function computeGravitationalAcceleration(particle) {
+	// 실제 상수 대신 시뮬레이션에 맞게 조정된 상수를 사용할 수 있음
 	const G = 6.125e-11;
 	let ax = 0, ay = 0;
 	for (let i = 0; i < particles.length; i++) {
@@ -121,6 +108,7 @@ function detectContacts() {
 			let dist = Math.sqrt(dx * dx + dy * dy) || 1;
 			let penetration = p.radius + p2.radius - dist;
 			if (penetration > 0) {
+				// 법선: p에서 p2로 향하는 단위 벡터
 				let normal = { x: dx / dist, y: dy / dist };
 				contacts.push(new Contact(p, p2, normal, penetration));
 			}
@@ -152,6 +140,7 @@ function resolveContact(contact) {
 	
 	// 법선 방향의 상대 속도 성분
 	let relVelNorm = rv.x * normal.x + rv.y * normal.y;
+	// 이미 분리 중이면 해결하지 않음
 	if (relVelNorm > 0) return;
 	
 	// 회전 효과를 포함한 효과적 질량 계산
@@ -163,6 +152,7 @@ function resolveContact(contact) {
 	
 	// 충돌 impulse 스칼라
 	let j = -(1 + restitution) * relVelNorm / invMassSum;
+	// 법선 impulse 벡터
 	let impulse = { x: j * normal.x, y: j * normal.y };
 	
 	// 선형 운동 업데이트
@@ -171,17 +161,19 @@ function resolveContact(contact) {
 	b.velocity.x += impulse.x * b.invMass;
 	b.velocity.y += impulse.y * b.invMass;
 	
-	// 회전 운동 업데이트
+	// 회전 운동 업데이트 (2D에서: angularImpulse = r × impulse)
 	a.angularVelocity -= a.invInertia * (rA.x * impulse.y - rA.y * impulse.x);
 	b.angularVelocity += b.invInertia * (rB.x * impulse.y - rB.y * impulse.x);
 	
-	// 접선(마찰) 계산 (마찰이 0이므로 사실상 효과 없음)
+	// 접선(마찰) 계산: 법선에 수직인 벡터
 	let tangent = { x: -normal.y, y: normal.x };
 	let relVelTangent = rv.x * tangent.x + rv.y * tangent.y;
 	let jt = -relVelTangent / invMassSum;
+	// Coulomb 마찰 모델: 최대 접선 impulse 제한
 	let maxFriction = friction * j;
 	if (jt > maxFriction) jt = maxFriction;
 	if (jt < -maxFriction) jt = -maxFriction;
+	
 	let frictionImpulse = { x: jt * tangent.x, y: jt * tangent.y };
 	
 	a.velocity.x -= frictionImpulse.x * a.invMass;
@@ -194,20 +186,13 @@ function resolveContact(contact) {
 	
 	a.isColliding = true;
 	b.isColliding = true;
-	
-	// 충돌 발생 시 슬립 상태 해제
-	a.isSleeping = false;
-	b.isSleeping = false;
-	a.sleepTimer = 0;
-	b.sleepTimer = 0;
 }
 
-// Baumgarte positional correction: 침투 보정
+// Baumgarte positional correction 함수 수정
 function positionalCorrection(contact) {
-	const percent = 0.2;
-	const slop = 0.01;
+	const slop = 0.01;   // 허용 침투
 	let correctionMag = Math.max(contact.penetration - slop, 0) /
-		(contact.a.invMass + contact.b.invMass) * percent;
+		(contact.a.invMass + contact.b.invMass) * baumgartePercent;
 	let correction = { x: correctionMag * contact.normal.x, y: correctionMag * contact.normal.y };
 	contact.a.position.x -= correction.x * contact.a.invMass;
 	contact.a.position.y -= correction.y * contact.a.invMass;
@@ -215,7 +200,6 @@ function positionalCorrection(contact) {
 	contact.b.position.y += correction.y * contact.b.invMass;
 }
 
-// 메인 업데이트 루프 (고정 dt 방식, Sequential Impulse Solver 적용)
 function update(ctx, canvas) {
 	requestAnimationFrame(() => update(ctx, canvas));
 	let now = Date.now();
@@ -233,24 +217,11 @@ function update(ctx, canvas) {
 	// 중력 적용 및 선형 속도 업데이트
 	for (let i = 0; i < particles.length; i++) {
 		let p = particles[i];
-		// 슬립 상태인 경우, 외력이나 속도가 임계치를 넘으면 깨어나도록 검사
-		if (p.isSleeping) {
-			let grav = computeGravitationalAcceleration(p);
-			let aMag = Math.hypot(grav.x, grav.y);
-			let vMag = Math.hypot(p.velocity.x, p.velocity.y);
-			if (aMag > wakeAccelerationThreshold || vMag > wakeVelocityThreshold) {
-				p.isSleeping = false;
-				p.sleepTimer = 0;
-			}
-		}
-		// 슬립 상태가 아니라면 중력 적용
-		if (!p.isSleeping) {
-			let grav = computeGravitationalAcceleration(p);
-			p.acceleration.x = grav.x;
-			p.acceleration.y = grav.y;
-			p.velocity.x += p.acceleration.x * frameTime;
-			p.velocity.y += p.acceleration.y * frameTime;
-		}
+		let grav = computeGravitationalAcceleration(p);
+		p.acceleration.x = grav.x;
+		p.acceleration.y = grav.y;
+		p.velocity.x += p.acceleration.x * frameTime;
+		p.velocity.y += p.acceleration.y * frameTime;
 	}
 	
 	// 충돌 접점 검출
@@ -263,33 +234,18 @@ function update(ctx, canvas) {
 		}
 	}
 	
-	// 침투 보정
+	// Baumgarte 위치 보정 적용
 	for (let i = 0; i < contacts.length; i++) {
 		positionalCorrection(contacts[i]);
 	}
 	
-	// 최종 위치와 회전 통합
+	// 최종 위치와 회전 통합 및 미세 감쇠 적용
 	for (let i = 0; i < particles.length; i++) {
 		particles[i].integrate(frameTime);
-	}
-	
-	// 슬립 상태 업데이트: 일정 시간 이하의 속도라면 슬립 타이머 증가
-	for (let i = 0; i < particles.length; i++) {
-		let p = particles[i];
-		if (!p.isSleeping) {
-			let speedSq = p.velocity.x * p.velocity.x + p.velocity.y * p.velocity.y;
-			if (speedSq < sleepVelocityThreshold * sleepVelocityThreshold) {
-				p.sleepTimer += frameTime;
-				if (p.sleepTimer > sleepTimeLimit) {
-					p.isSleeping = true;
-					p.velocity.x = 0;
-					p.velocity.y = 0;
-					p.angularVelocity = 0;
-				}
-			} else {
-				p.sleepTimer = 0;
-			}
-		}
+		// 통합 후 선형, 회전 감쇠 적용
+		particles[i].velocity.x *= linearDamping;
+		particles[i].velocity.y *= linearDamping;
+		particles[i].angularVelocity *= angularDamping;
 	}
 	
 	// 벽 충돌 처리 
