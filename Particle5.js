@@ -1,4 +1,4 @@
-// Particle4.js - 현실적인 물리 시뮬레이션
+// Particle5.js - 현실적인 물리 시뮬레이션
 
 // 입자 클래스
 class Particle {
