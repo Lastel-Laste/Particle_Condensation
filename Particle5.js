@@ -81,7 +81,7 @@ const timeScale = 15;          // 현실적인 시간 스케일
 
 // 물리 상수
 const G = 6.67430e-11; // 실제 중력 상수
-const G_scale = 100;     // 시뮬레이션용 스케일 (조정됨)
+const G_scale = 50;     // 시뮬레이션용 스케일 (조정됨)
 
 // 응착력 상수 (가까운 거리에서의 인력)
 const ADHESION_DISTANCE = 10;    // 응착력 작용 거리
