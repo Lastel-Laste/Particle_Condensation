@@ -1,4 +1,4 @@
-// Particle5.js - 현실적인 물리 시뮬레이션
+// Particle5.js - 자연스러운 물리 기반 시뮬레이션
 
 // 입자 클래스
 class Particle {
@@ -10,24 +10,24 @@ class Particle {
 		};
 		this.acceleration = { x: 0, y: 0 };
 		
-		// 물리적으로 정확한 특성
+		// 물리적 특성
 		this.radius = 4;
-		// 질량은 부피에 비례 (4/3 * π * r^3 * 밀도)
 		this.mass = this.radius * this.radius * this.radius * 1e7;
 		this.invMass = 1 / this.mass;
 		
-		// 회전 관련 변수 (구체의 관성 모멘트: 2/5 * m * r^2)
+		// 회전 관련 변수
 		this.angle = 0;
 		this.angularVelocity = 0;
-		this.inertia = (2/5) * this.mass * this.radius * this.radius;
+		this.inertia = (2/5) * this.mass * this.radius * this.radius; // 구체의 관성 모멘트
 		this.invInertia = 1 / this.inertia;
 		
-		// 물리적 특성 - 실제 물질과 유사한 범위로 설정
+		// 물리적 특성
 		this.restitution = 0.5 + Math.random() * 0.3; // 0.5~0.8 범위 (대부분의 실제 물질)
 		this.friction = 0.1 + Math.random() * 0.3;    // 0.1~0.4 범위 (일반적인 마찰 계수)
+		this.staticFriction = this.friction * 1.5;    // 정지 마찰계수 (일반적으로 동적 마찰보다 큼)
 		
-		// 에너지/온도 관련
-		this.kineticEnergy = 0; // 운동 에너지 (1/2 * m * v^2)
+		// 에너지 관련 변수
+		this.kineticEnergy = 0;
 		
 		this.isColliding = false;
 		this.gridIndex = -1;
@@ -40,24 +40,24 @@ class Particle {
 		return this.kineticEnergy;
 	}
 
-	// 4차 룽게-쿠타 적분법 - 더 정확한 궤적 계산
-	integrateBetter(dt) {
-		// 룽게-쿠타는 미분방정식을 더 정확하게 풀지만 
-		// 충돌 기반 시뮬레이션에서는 오히려 간단한 방법이 더 안정적일 수 있음
-		// 반 오일러법 사용 (속도-위치 순서)
+	// 간단한 반 오일러 적분
+	integrate(dt) {
+		// 속도 업데이트
 		this.velocity.x += this.acceleration.x * dt;
 		this.velocity.y += this.acceleration.y * dt;
 		
+		// 위치 업데이트
 		this.position.x += this.velocity.x * dt;
 		this.position.y += this.velocity.y * dt;
 		
+		// 회전 업데이트
 		this.angle += this.angularVelocity * dt;
 		
 		// 가속도 초기화
 		this.acceleration.x = 0;
 		this.acceleration.y = 0;
 		
-		// 운동 에너지 업데이트
+		// 에너지 계산
 		this.calculateKineticEnergy();
 	}
 }
@@ -69,6 +69,7 @@ class Contact {
 		this.b = b;             // 충돌 입자 B
 		this.normal = normal;   // A에서 B로 향하는 단위 법선 벡터
 		this.penetration = penetration; // 침투 깊이
+		this.persisted = false; // 지속된 접촉인지 여부
 	}
 }
 
@@ -76,15 +77,20 @@ class Contact {
 let particles = [];
 const particle_num = 1000;
 const solverIterations = 10;   // Sequential Impulse Solver 반복 횟수
-const timeScale = 15;          // 현실적인 시간 스케일 (너무 빠르거나 느리지 않게)
+const timeScale = 15;          // 현실적인 시간 스케일
 
-// 물리 상수 - 실제 물리상수에 가깝게 설정
+// 물리 상수
 const G = 6.67430e-11; // 실제 중력 상수
-const G_scale = 5;   // 시각화를 위한 스케일 조정
+const G_scale = 100;     // 시뮬레이션용 스케일 (조정됨)
+
+// 응착력 상수 (가까운 거리에서의 인력)
+const ADHESION_DISTANCE = 10;    // 응착력 작용 거리
+const ADHESION_STRENGTH = 0.2;   // 응착력 강도
 
 // 시간 관련 변수
 let fps = 480;
 let then = Date.now();
+let simulationTime = 0; // 총 시뮬레이션 시간
 
 // 파티클 초기화 (index.html에서 init(canvas) 호출)
 function init(canvas) {
@@ -96,15 +102,16 @@ function init(canvas) {
 		particles.push(p);
 		addParticleToGrid(p, calculateGridIndex(p.position));
 	}
+	
+	simulationTime = 0;
 }
 
-// 현실적인 중력 계산 - 전체 입자와의 상호작용 (그리드 최적화 없이)
-// 중력은 장거리 힘이므로 모든 입자와 상호작용해야 함
+// 중력 계산 - 모든 입자 쌍 간 상호작용
 function computeGravitationalAcceleration(particle) {
-	const G_effective = G * G_scale; // 스케일 조정된 중력 상수
+	const G_effective = G * G_scale;
 	let ax = 0, ay = 0;
 	
-	// 모든 입자와의 중력 상호작용 계산
+	// 모든 입자와의 중력 상호작용
 	for (let i = 0; i < particles.length; i++) {
 		const other = particles[i];
 		if (other !== particle) {
@@ -124,6 +131,15 @@ function computeGravitationalAcceleration(particle) {
 			// 가속도 계산: a = F/m
 			ax += (force * dx) / (distance * particle.mass);
 			ay += (force * dy) / (distance * particle.mass);
+			
+			// 응착력 (가까운 거리에서의 추가 인력)
+			if (distance < ADHESION_DISTANCE) {
+				// 거리에 반비례하는 응착력 (가까울수록 강함)
+				const adhesionFactor = 1.0 - (distance / ADHESION_DISTANCE);
+				const adhesionForce = ADHESION_STRENGTH * adhesionFactor * particle.mass;
+				ax += (adhesionForce * dx) / (distance * particle.mass);
+				ay += (adhesionForce * dy) / (distance * particle.mass);
+			}
 		}
 	}
 	
@@ -134,17 +150,19 @@ function computeGravitationalAcceleration(particle) {
 function detectContacts() {
 	let contacts = [];
 	
-	// 그리드 기반 충돌 검출 (근거리 상호작용이므로 공간 분할 최적화가 적합)
+	// 그리드 기반 충돌 검출
 	for (let i = 0; i < particles.length; i++) {
 		let p = particles[i];
 		let nearby = getNearbyParticles(p);
 		for (let j = 0; j < nearby.length; j++) {
 			let p2 = nearby[j];
 			if (p === p2) continue;
+			
 			let dx = p2.position.x - p.position.x;
 			let dy = p2.position.y - p.position.y;
 			let dist = Math.sqrt(dx * dx + dy * dy) || 1;
 			let penetration = p.radius + p2.radius - dist;
+			
 			if (penetration > 0) {
 				// 법선: p에서 p2로 향하는 단위 벡터
 				let normal = { x: dx / dist, y: dy / dist };
@@ -152,10 +170,11 @@ function detectContacts() {
 			}
 		}
 	}
+	
 	return contacts;
 }
 
-// 현실적인 충돌 해결 - 물리적으로 정확한 반발 및 마찰
+// 충돌 해결 - 정지 마찰 포함
 function resolveContact(contact) {
 	let a = contact.a;
 	let b = contact.b;
@@ -187,8 +206,7 @@ function resolveContact(contact) {
 		(rA_cross_n * rA_cross_n) * a.invInertia +
 		(rB_cross_n * rB_cross_n) * b.invInertia;
 	
-	// 속도 의존적 반발계수 (실제 물질의 특성)
-	// 높은 충돌 속도에서는 에너지 손실이 더 크다
+	// 속도 의존적 반발계수
 	let relVelMag = Math.abs(relVelNorm);
 	const velocityThreshold = 10.0;
 	
@@ -198,7 +216,6 @@ function resolveContact(contact) {
 	// 속도에 따른 반발계수 감소 (실제 충돌에서 관찰되는 현상)
 	let effectiveRestitution = avgRestitution;
 	if (relVelMag > velocityThreshold) {
-		// 충돌 속도가 높을수록 비탄성 충돌에 가까워짐
 		effectiveRestitution *= Math.max(0.2, 1.0 - (relVelMag - velocityThreshold) * 0.015);
 	}
 	
@@ -223,13 +240,25 @@ function resolveContact(contact) {
 	// 접선 방향 impulse 계산
 	let jt = -relVelTangent / invMassSum;
 	
-	// 입자별 마찰계수 조합
-	let avgFriction = (a.friction + b.friction) * 0.5;
-	let maxFriction = avgFriction * j;
+	// 정지 마찰과 동적 마찰 구분
+	// 정지 마찰: 상대 속도가 매우 작을 때
+	const isResting = Math.abs(relVelTangent) < 0.1;
 	
-	// Coulomb 마찰 모델 적용
-	if (jt > maxFriction) jt = maxFriction;
-	if (jt < -maxFriction) jt = -maxFriction;
+	// 정지/동적 마찰 계수 선택
+	let effectiveFriction;
+	if (isResting) {
+		// 정지 마찰 (더 큼)
+		effectiveFriction = Math.max(a.staticFriction, b.staticFriction);
+	} else {
+		// 동적 마찰
+		effectiveFriction = (a.friction + b.friction) * 0.5;
+	}
+	
+	// Coulomb 마찰 모델
+	let maxFriction = Math.abs(j) * effectiveFriction;
+	if (Math.abs(jt) > maxFriction) {
+		jt = jt > 0 ? maxFriction : -maxFriction;
+	}
 	
 	let frictionImpulse = { x: jt * tangent.x, y: jt * tangent.y };
 	
@@ -242,6 +271,10 @@ function resolveContact(contact) {
 	// 마찰에 의한 회전 운동량
 	a.angularVelocity -= a.invInertia * (rA.x * frictionImpulse.y - rA.y * frictionImpulse.x);
 	b.angularVelocity += b.invInertia * (rB.x * frictionImpulse.y - rB.y * frictionImpulse.x);
+	
+	// 충돌 상태 표시
+	a.isColliding = true;
+	b.isColliding = true;
 }
 
 // Baumgarte positional correction: 침투 보정
@@ -257,7 +290,7 @@ function positionalCorrection(contact) {
 	contact.b.position.y += correction.y * contact.b.invMass;
 }
 
-// 메인 업데이트 루프 (개선된 물리 계산 및 시각화)
+// 메인 업데이트 루프
 function update(ctx, canvas) {
 	requestAnimationFrame(() => update(ctx, canvas));
 	let now = Date.now();
@@ -266,13 +299,16 @@ function update(ctx, canvas) {
 	if (frameTime > 0.25) frameTime = 0.25; // 안정성을 위한 최대 dt 제한
 	then = now;
 	
-	// 그리드 업데이트 (충돌 검출 최적화용)
+	// 시뮬레이션 시간 갱신
+	simulationTime += frameTime;
+	
+	// 그리드 업데이트
 	for (let i = 0; i < particles.length; i++) {
 		removeParticleFromGrid(particles[i]);
 		addParticleToGrid(particles[i], calculateGridIndex(particles[i].position));
 	}
 	
-	// 모든 입자의 중력 가속도 계산 (그리드 최적화 없이 전체 계산)
+	// 모든 입자의 중력 가속도 계산
 	for (let i = 0; i < particles.length; i++) {
 		let p = particles[i];
 		let grav = computeGravitationalAcceleration(p);
@@ -280,7 +316,7 @@ function update(ctx, canvas) {
 		p.acceleration.y = grav.y;
 	}
 	
-	// 충돌 접점 검출 (그리드 최적화 사용)
+	// 충돌 접점 검출
 	let contacts = detectContacts();
 	
 	// Sequential Impulse Solver
@@ -297,46 +333,69 @@ function update(ctx, canvas) {
 	
 	// 위치와 회전 업데이트
 	for (let i = 0; i < particles.length; i++) {
-		particles[i].integrateBetter(frameTime);
+		particles[i].integrate(frameTime);
 	}
 	
-	// 벽 충돌 처리 (현실적인 반발 및 마찰)
+	// 벽 충돌 처리 (정지 마찰 포함)
 	for (let i = 0; i < particles.length; i++) {
 		let p = particles[i];
 		
-		// 속도에 따른 벽 반발계수 (실제 현상과 유사)
+		// 속도에 따른 벽 반발계수
 		const speed = Math.sqrt(p.velocity.x * p.velocity.x + p.velocity.y * p.velocity.y);
 		const wallRestitution = p.restitution * Math.max(0.5, 1.0 - speed * 0.01);
 		
 		// 왼쪽 벽
 		if (p.position.x - p.radius < 0) {
 			p.position.x = p.radius;
+			
+			// 정지 상태 판별 (속도가 매우 낮으면 정지 마찰 적용)
+			const isResting = Math.abs(p.velocity.x) < 0.5;
+			
 			// 속도 반전 (반발계수 적용)
 			p.velocity.x *= -wallRestitution;
-			// 벽 마찰 (수직방향 속도 감소)
-			p.velocity.y *= (1.0 - p.friction * 0.2);
+			
+			// 벽 마찰 (수직방향 속도 감소) - 정지 마찰 적용 시 더 강하게
+			const frictionCoeff = isResting ? p.staticFriction : p.friction;
+			p.velocity.y *= (1.0 - frictionCoeff * 0.3);
+			
 			// 회전 효과
 			p.angularVelocity += p.velocity.y * 0.1;
 		}
 		// 오른쪽 벽
-		if (p.position.x + p.radius > canvas.width) {
+		else if (p.position.x + p.radius > canvas.width) {
 			p.position.x = canvas.width - p.radius;
+			
+			const isResting = Math.abs(p.velocity.x) < 0.5;
 			p.velocity.x *= -wallRestitution;
-			p.velocity.y *= (1.0 - p.friction * 0.2);
+			
+			const frictionCoeff = isResting ? p.staticFriction : p.friction;
+			p.velocity.y *= (1.0 - frictionCoeff * 0.3);
+			
 			p.angularVelocity -= p.velocity.y * 0.1;
 		}
+		
 		// 위쪽 벽
 		if (p.position.y - p.radius < 0) {
 			p.position.y = p.radius;
+			
+			const isResting = Math.abs(p.velocity.y) < 0.5;
 			p.velocity.y *= -wallRestitution;
-			p.velocity.x *= (1.0 - p.friction * 0.2);
+			
+			const frictionCoeff = isResting ? p.staticFriction : p.friction;
+			p.velocity.x *= (1.0 - frictionCoeff * 0.3);
+			
 			p.angularVelocity -= p.velocity.x * 0.1;
 		}
 		// 아래쪽 벽
-		if (p.position.y + p.radius > canvas.height) {
+		else if (p.position.y + p.radius > canvas.height) {
 			p.position.y = canvas.height - p.radius;
+			
+			const isResting = Math.abs(p.velocity.y) < 0.5;
 			p.velocity.y *= -wallRestitution;
-			p.velocity.x *= (1.0 - p.friction * 0.2);
+			
+			const frictionCoeff = isResting ? p.staticFriction : p.friction;
+			p.velocity.x *= (1.0 - frictionCoeff * 0.3);
+			
 			p.angularVelocity += p.velocity.x * 0.1;
 		}
 		
@@ -365,12 +424,19 @@ function update(ctx, canvas) {
 	for (let i = 0; i < particles.length; i++) {
 		let p = particles[i];
 		
-		// 입자의 운동 에너지에 따른 색상 (파란색: 낮음, 초록색: 중간, 빨간색: 높음)
+		// 상대적 에너지 계산 (0~1 사이 값)
 		const normalizedEnergy = (p.kineticEnergy - minEnergy) / energyRange;
 		
-		// HSL 색상 공간 사용 (240: 파랑, 0: 빨강)
-		const hue = 240 * (1 - normalizedEnergy);
-		const saturation = 100;
+		// 적절한 색상 매핑 범위 지정 (더 좁은 범위로 조정)
+		// 낮은 에너지: 파랑 (240), 중간: 초록 (120), 높은 에너지: 빨강 (0)
+		let hue;
+		
+		// 색상 매핑을 더 세분화 (로그 스케일 적용)
+		const logEnergy = Math.log(normalizedEnergy * 9 + 1) / Math.log(10); // 0~1 사이 로그 스케일
+		hue = 240 * (1 - logEnergy);
+		
+		// HSL 색상 설정
+		const saturation = 80;
 		const lightness = 50;
 		
 		ctx.save();
@@ -391,6 +457,9 @@ function update(ctx, canvas) {
 		ctx.stroke();
 		
 		ctx.restore();
+		
+		// 충돌 표시 초기화
+		p.isColliding = false;
 	}
 	
 	// 시스템 정보 표시
@@ -403,7 +472,7 @@ function update(ctx, canvas) {
 		totalEnergy += particles[i].kineticEnergy;
 	}
 	const avgEnergy = totalEnergy / particles.length;
-	ctx.fillText(`Average Kinetic Energy: ${avgEnergy.toExponential(2)}`, 10, 30);
+	ctx.fillText(`Avg Energy: ${avgEnergy.toExponential(2)}`, 10, 30);
 	
 	// 입자 속도 정보 표시
 	let totalSpeed = 0;
@@ -417,5 +486,8 @@ function update(ctx, canvas) {
 		if (speed > maxSpeed) maxSpeed = speed;
 	}
 	const avgSpeed = totalSpeed / particles.length;
-	ctx.fillText(`Average Speed: ${avgSpeed.toFixed(2)}, Max Speed: ${maxSpeed.toFixed(2)}`, 10, 50);
+	ctx.fillText(`Avg Speed: ${avgSpeed.toFixed(2)}, Max: ${maxSpeed.toFixed(2)}`, 10, 50);
+	
+	// 시뮬레이션 시간 표시
+	ctx.fillText(`Simulation Time: ${simulationTime.toFixed(2)}s`, 10, 70);
 }
