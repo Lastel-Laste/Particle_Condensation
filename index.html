@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>파티클 응축 시뮬레이션 - Barnes-Hut 최적화</title>
+    <style>
+      body {
+        background-color: black;
+        margin: 0;
+        overflow: hidden;
+      }
+      #performance-stats {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        color: white;
+        font-family: monospace;
+        font-size: 14px;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 5px;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="fps-counter"></div>
+    <div id="performance-stats"></div>
+    <canvas id="canvas"></canvas>
+    <script type="text/javascript" src="Barnes-Hut.js"></script>
+    <script type="text/javascript" src="grid.js"></script>
+    <script type="text/javascript" src="Particle6.js"></script>
+    <script>
+        // 성능 모니터링 변수
+        let lastFrameTime = 0;
+        let frameTimesSum = 0;
+        let frameTimesCount = 0;
+        const perfStats = document.getElementById("performance-stats");
+        
+        // 캔버스 초기화
+        const canvas = document.getElementById("canvas");
+        canvas.width = window.innerWidth - 4;
+        canvas.height = window.innerHeight - 4;
+        const ctx = canvas.getContext("2d");
+        
+        // 그리드 초기화
+        initGrid(canvas);
+        
+        // Barnes-Hut 초기화
+        initBarnesHut(canvas);
+        
+        // 파티클 초기화
+        init(canvas);
+        
+        // 애니메이션 프레임 시간 측정을 위한 함수
+        function measureFrameTime() {
+            const now = performance.now();
+            if (lastFrameTime > 0) {
+                const frameTime = now - lastFrameTime;
+                frameTimesSum += frameTime;
+                frameTimesCount++;
+                
+                // 매 30프레임마다 평균 계산 및 표시
+                if (frameTimesCount >= 1) {
+                    const avgFrameTime = frameTimesSum / frameTimesCount;
+                    perfStats.textContent = 
+                        `Avg Frame: ${avgFrameTime.toFixed(2)}ms\n` +
+                        `Particles: ${particles.length}`;
+                    
+                    frameTimesSum = 0;
+                    frameTimesCount = 0;
+                }
+            }
+            lastFrameTime = now;
+            requestAnimationFrame(measureFrameTime);
+        }
+        
+        // 애니메이션 루프 시작
+        update(ctx, canvas);
+        measureFrameTime();
+
+        // 캔버스 크기 조정 이벤트 리스너
+        window.addEventListener("resize", () => {
+            canvas.width = window.innerWidth - 4;
+            canvas.height = window.innerHeight - 4;
+            
+            // Barnes-Hut 트리 재구성
+            if (useBarnesHut) {
+                initBarnesHut(canvas);
+            }
+            
+            // 그리드 재초기화
+            initGrid(canvas);
+        });
+    </script>
+  </body>
+</html>
